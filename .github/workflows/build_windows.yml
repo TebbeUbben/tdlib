@@ -1,0 +1,44 @@
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Clone td
+      run: git clone https://github.com/tdlib/td.git
+    - name: Checkout td v1.8.31
+      working-directory: td
+      run: git checkout 8f19c75
+    - name: Clone vcpkg
+      working-directory: td
+      run: git clone https://github.com/Microsoft/vcpkg.git
+    - name: Checkout vcpkg
+      working-directory: td/vcpkg
+      run: git checkout cd5e746ec203c8c3c61647e0886a8df8c1e78e41
+    - name: Bootstrap vcpkg
+      working-directory: td/vcpkg
+      run: ./bootstrap-vcpkg.bat
+    - name: Install gperf, openssl, zlib
+      working-directory: td/vcpkg
+      run: ./vcpkg.exe install gperf:x64-windows openssl:x64-windows zlib:x64-windows
+    - name: Remove intermediate build dir
+      working-directory: td
+      run: Remove-Item build -Force -Recurse -ErrorAction SilentlyContinue
+    - name: Create build dir
+      working-directory: td
+      run: mkdir build
+    - name: Cmake
+      working-directory: td/build
+      run: cmake -A x64 -DCMAKE_INSTALL_PREFIX:PATH=../tdlib -DCMAKE_TOOLCHAIN_FILE:FILEPATH=../vcpkg/scripts/buildsystems/vcpkg.cmake ..
+    - name: Cmake install
+      working-directory: td/build
+      run: cmake --build . --target install --config Release
+    - name: Create release
+      uses: actions/upload-artifact@v4
+      with:
+        name: Win x64 Release
+        path: td/tdlib
