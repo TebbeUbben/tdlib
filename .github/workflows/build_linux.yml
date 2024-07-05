@@ -1,0 +1,35 @@
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: apt-get update
+      run: sudo apt-get update
+    - name: apt-get upgrade
+      run: sudo apt-get upgrade
+    - name: apt-get install dependencies
+      run: sudo apt-get install make git zlib1g-dev libssl-dev gperf php-cli cmake clang-18 libc++-18-dev libc++abi-18-dev
+    - name: Clone td
+      run: git clone https://github.com/tdlib/td.git
+    - name: Checkout td v1.8.31
+      working-directory: td
+      run: git checkout 8f19c75
+    - name: Create build dir
+      working-directory: td
+      run: mkdir build
+    - name: Cmake
+      working-directory: td/build
+      run: CXXFLAGS="-stdlib=libc++" CC=/usr/bin/clang-18 CXX=/usr/bin/clang++-18 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=../tdlib -DTD_ENABLE_LTO=ON -DCMAKE_AR=/usr/bin/llvm-ar-18 -DCMAKE_NM=/usr/bin/llvm-nm-18 -DCMAKE_OBJDUMP=/usr/bin/llvm-objdump-18 -DCMAKE_RANLIB=/usr/bin/llvm-ranlib-18 ..
+    - name: Cmake install
+      working-directory: td/build
+      run: cmake --build . --target install
+    - name: Create release
+      uses: actions/upload-artifact@v4
+      with:
+        name: Ubuntu x64 Release
+        path: td/tdlib
